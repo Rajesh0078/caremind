@@ -1,5 +1,6 @@
 import TenantDomain from "../modules/tenantDomains/TenantDomain.js";
 
+
 export const resolveTenant = async (req, res, next) => {
   try {
     const host = req.hostname;

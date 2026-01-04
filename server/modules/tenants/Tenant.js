@@ -36,7 +36,7 @@ const tenantSchema = new Schema(
     ownerId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Tenant owner is required"],
+      default: null,
       index: true,
     },
 
@@ -57,8 +57,5 @@ const tenantSchema = new Schema(
   }
 );
 
-tenantSchema.index({ slug: 1 });
-tenantSchema.index({ status: 1 });
-tenantSchema.index({ ownerId: 1 });
 
 export default model("Tenant", tenantSchema, "tenants");

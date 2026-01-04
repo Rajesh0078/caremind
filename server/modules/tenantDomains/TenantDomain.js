@@ -48,7 +48,7 @@ const tenantDomainSchema = new Schema(
     status: {
       type: String,
       enum: {
-        values: ["active", "inactive", "blocked"],
+        values: ["active", "inactive", "blocked", "DNS failed"],
         message: "Status must be active, inactive, or blocked",
       },
       default: "active",
@@ -68,39 +68,32 @@ const tenantDomainSchema = new Schema(
 );
 
 
-tenantDomainSchema.pre("validate", function (next) {
-  if (this.subdomain) {
-    const sub = this.subdomain.toLowerCase();
+tenantDomainSchema.pre("validate", function () {
+  if (!this.subdomain) {return;}
 
-    if (RESERVED_SUBDOMAINS.includes(sub)) {
-      return next(
-        new Error(`Subdomain '${sub}' is reserved and cannot be used`)
-      );
-    }
+  const sub = this.subdomain.toLowerCase();
+
+  if (RESERVED_SUBDOMAINS.includes(sub)) {
+    throw new Error(`Subdomain '${sub}' is reserved and cannot be used`);
   }
-
-  next();
 });
 
-tenantDomainSchema.pre("save", function (next) {
+
+tenantDomainSchema.pre("save", function () {
   if (!this.subdomain) {
-    return next(new Error("Subdomain is required to generate full domain"));
+    throw new Error("Subdomain is required to generate full domain");
   }
 
   if (!process.env.DOMAIN_URI) {
-    return next(new Error("DOMAIN_URI is not configured"));
+    throw new Error("DOMAIN_URI is not configured");
   }
 
   if (this.isModified("subdomain") || !this.fullDomain) {
     const domain = process.env.DOMAIN_URI.replace(/^https?:\/\//, "");
     this.fullDomain = `${this.subdomain}.${domain}`.toLowerCase();
   }
-
-  next();
 });
 
-tenantDomainSchema.index({ tenantId: 1 });
-tenantDomainSchema.index({ subdomain: 1 });
-tenantDomainSchema.index({ fullDomain: 1 });
+
 
 export default model("TenantDomain", tenantDomainSchema, "tenant_domains");
