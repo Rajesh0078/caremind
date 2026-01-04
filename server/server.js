@@ -2,10 +2,9 @@ import express from "express";
 import { PORT, NODE_ENV } from "./config/env.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import connectToDb from "./config/database.js";
-import router from "./routes.js";
+import router from "./routes/routes.js";
 
 const app = express();
-
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
