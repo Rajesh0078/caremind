@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import TenantDomain from "../tenantDomains/TenantDomain.js";
 import Tenant from "./Tenant.js";
-import { createSubdomainDNS } from "../../services/cloudflare.service.js";
+import axios from "axios";
+import { DOMAIN_URI, VERCEL_API_TOKEN, VERCEL_DOMAIN } from "../../config/env.js";
 
 const RESERVED_SUBDOMAINS = [
   "www",
@@ -13,22 +14,31 @@ const RESERVED_SUBDOMAINS = [
   "super",
 ];
 
+const createSubDomain = async (slug) => {
+  try {
+    const response = await axios.post(
+      `https://api.vercel.com/v9/projects/${VERCEL_DOMAIN}/domains`,
+      { "name": `${slug}.${DOMAIN_URI}` },
+      {
+        headers: {
+          Authorization: `Bearer ${VERCEL_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data.result;
+  } catch (error) {
+    console.log(error);
+    throw new Error(error);
+  }
+};
+
 const newTenantController = async(req, res, next) => {
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
     const { name, slug, subdomain } = req.body;
-
-    const isSuperAdmin = req.user?.roles?.some(
-      (role) => role.key === "super_admin"
-    );
-
-    if (!isSuperAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized",
-      });
-    }
 
     if (!name || !slug || !subdomain) {
       return res.status(400).json({
@@ -102,7 +112,7 @@ const newTenantController = async(req, res, next) => {
     session.endSession();
 
     try {
-      await createSubdomainDNS(cleanSubdomain);
+      await createSubDomain(cleanSubdomain);
 
       await TenantDomain.updateOne(
         { _id: tenantDomain[0]._id },
@@ -135,4 +145,25 @@ const newTenantController = async(req, res, next) => {
   }
 };
 
-export { newTenantController };
+const getTenantsController = async (req, res, next) => {
+  try {
+    const tenants = await Tenant.find()
+      .populate({
+        path: "createdBy",
+        select: "-roleIds",
+        populate: {
+          path: "roleIds",
+          select: "key name scope isActive",
+        },
+      });
+    return res.send({
+      success: false,
+      message: "Tenants retrieved successfully",
+      data: tenants
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { newTenantController, getTenantsController };

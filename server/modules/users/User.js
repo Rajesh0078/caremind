@@ -30,6 +30,12 @@ const userSchema = new Schema(
       ],
     },
 
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+
     phone: {
       type: String,
       trim: true,
